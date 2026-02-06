@@ -10,10 +10,10 @@ export class StudentsService {
     private studentRepo: Repository<Student>,
   ) {}
 
-  async registerStudent(full_name: string) {
+  async registerStudent(fullName: string) {
     // 1. Save student first
     const student = await this.studentRepo.save({
-      full_name,
+      fullName,
       joined_date: new Date(),
     });
 

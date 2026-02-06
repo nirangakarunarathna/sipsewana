@@ -7,5 +7,5 @@ export class CreateStudentDto {
   @MinLength(3)
   @MaxLength(100)
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
-  full_name: string;
+  fullName: string;
 }
