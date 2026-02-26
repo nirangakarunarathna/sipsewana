@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { CreateStudentDto } from './dto/create-student.dto';
+import { UpdateStudentDto } from './dto/update-student.dto';
+import { Student } from './entities/student.entity';
 import { Repository } from 'typeorm';
-import { Student } from './student.entity';
+import { InjectRepository } from '@nestjs/typeorm';
 
 @Injectable()
 export class StudentsService {
@@ -9,25 +11,35 @@ export class StudentsService {
     @InjectRepository(Student)
     private studentRepo: Repository<Student>,
   ) {}
-
-  async registerStudent(fullName: string) {
+  async create(createStudentDto: CreateStudentDto) {
     // 1. Save student first
     const student = await this.studentRepo.save({
-      fullName,
-      joined_date: new Date(),
+      fullName: createStudentDto.fullName,
+      parentMobile: createStudentDto.parentMobile,
+      parentName: createStudentDto.parentName,
+      address: createStudentDto.address,
+      studentMobile: createStudentDto.studentMobile,
+      joinedDate: new Date(),
     });
 
-    // 2. Generate Reg No using ID
-    const year = new Date().getFullYear();
-    const regNo = `ST-${year}-${student.id.toString().padStart(4, '0')}`;
-
-    // 3. Update Reg No
-    await this.studentRepo.update(student.id, { reg_no: regNo });
-
     return {
-      id: student.id,
-      reg_no: regNo,
-      full_name: student.full_name,
+      ...student
     };
+  }
+
+  async findAll() {
+    return await this.studentRepo.find({});
+  }
+
+  findOne(id: number) {
+    return `This action returns a #${id} student`;
+  }
+
+  update(id: number, updateStudentDto: UpdateStudentDto) {
+    return `This action updates a #${id} student`;
+  }
+
+  remove(id: number) {
+    return `This action removes a #${id} student`;
   }
 }

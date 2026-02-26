@@ -1,6 +1,10 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { StudentsModule } from './students/students.module';
+import { SubjectsModule } from './subjects/subjects.module';
+import { GradesModule } from './grades/grades.module';
+import { TeachersModule } from './teachers/teachers.module';
+import { ClassesModule } from './classes/classes.module';
 
 @Module({
   imports: [
@@ -15,6 +19,10 @@ import { StudentsModule } from './students/students.module';
       synchronize: true, // ⚠️ dev only
     }),
     StudentsModule,
+    SubjectsModule,
+    GradesModule,
+    TeachersModule,
+    ClassesModule,
   ],
 })
 export class AppModule {}
