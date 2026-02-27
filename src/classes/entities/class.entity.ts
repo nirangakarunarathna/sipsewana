@@ -14,11 +14,11 @@ export class Class {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: 'class_name' })
-  className: string;
+  @Column({ name: 'name' })
+  name: string;
 
-  @Column({ name: 'class_fee', type: 'decimal' })
-  classFee: number;
+  @Column({ name: 'fee', type: 'decimal' })
+  fee: number;
 
   // -------------------
   // Foreign keys

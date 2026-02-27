@@ -6,7 +6,7 @@ export class Subject {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({})
+  @Column({ name: 'name' })
   name: string;
 
   @OneToMany(() => Class, (classEntity) => classEntity.subject)

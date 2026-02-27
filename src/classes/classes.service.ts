@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateClassDto } from './dto/create-class.dto';
 import { UpdateClassDto } from './dto/update-class.dto';
 import { Class } from './entities/class.entity';
@@ -24,9 +24,18 @@ export class ClassesService {
     const teacher = await this.teacherRepo.findOne({
       where: { id: createClassDto.teacherId },
     });
+
+    if (!teacher) {
+     throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
+  }
     const subject = await this.subjectRepo.findOne({
       where: { id: createClassDto.subjectId },
     });
+
+    if (!subject) {
+     throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
+  }
+
     const grade = await this.gradeRepo.findOne({
       where: { id: createClassDto.gradeId },
     });
@@ -36,7 +45,8 @@ export class ClassesService {
     }
 
     const newClass = this.classRepo.create({
-      
+      name: createClassDto.name,
+      fee: createClassDto.fee,
       teacher,
       subject,
       grade,

@@ -12,20 +12,26 @@ export class CreateTeacherDto {
   @IsNotEmpty()
   @MinLength(3)
   @MaxLength(100)
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @Transform(
+    ({ value }) => (typeof value === 'string' ? value.trim() : value) as string,
+  )
   fullName: string;
 
   @IsOptional()
   @IsString()
   @MinLength(3)
   @MaxLength(100)
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @Transform(
+    ({ value }) => (typeof value === 'string' ? value.trim() : value) as string,
+  )
   address?: string;
 
   @IsOptional()
   @IsString()
   @MinLength(3)
   @MaxLength(15)
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @Transform(
+    ({ value }) => (typeof value === 'string' ? value.trim() : value) as string,
+  )
   mobile?: string;
 }
