@@ -33,33 +33,27 @@ export class StudentClassesService {
 
     const newStudentClass = this.studentClassRepo.create({
       student,
-      classEntity,
+      class: classEntity,
     });
 
     return this.studentClassRepo.save(newStudentClass);
   }
 
-  async findAll() {
-    return await this.classRepo
-      .createQueryBuilder('c')
-      .leftJoinAndSelect('c.grade', 'g')
-      .leftJoinAndSelect('c.subject', 's')
-      .leftJoinAndSelect('c.teacher', 't')
-      .select([
-        'c.id',
-        'c.name',
-        'c.fee',
-        'c.isActive',
-        'g.id',
-        'g.name',
-        's.id',
-        's.name',
-        't.id',
-        't.fullName',
-        't.mobile',
-      ])
-      .orderBy('c.id', 'DESC')
-      .getMany();
+  async findAll(classId?: number, studentId?: number) {
+    const qb = this.studentClassRepo
+      .createQueryBuilder('sc')
+      .leftJoinAndSelect('sc.student', 'student')
+      .leftJoinAndSelect('sc.class', 'class');
+
+    if (classId) {
+      qb.andWhere('sc.class_id = :classId', { classId });
+    }
+
+    if (studentId) {
+      qb.andWhere('sc.student_id = :studentId', { studentId });
+    }
+
+    return qb.getMany();
   }
 
   findOne(id: number) {

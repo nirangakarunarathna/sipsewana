@@ -39,6 +39,6 @@ export class Class {
   @JoinColumn({ name: 'grade_id' })
   grade: Grade;
 
-   @OneToMany(() => StudentClass, (studentClass) => studentClass.classEntity)
+  @OneToMany(() => StudentClass, (studentClass) => studentClass.class)
   studentClasses: StudentClass[];
 }
