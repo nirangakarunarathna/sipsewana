@@ -25,8 +25,8 @@ export class TeachersService {
     };
   }
 
-  findAll() {
-    return `This action returns all teachers`;
+  async findAll() {
+    return await this.teacherRepo.find({});
   }
 
   findOne(id: number) {

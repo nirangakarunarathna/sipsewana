@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { StudentClass } from 'src/student-classes/entities/student-class.entity';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 
 @Entity('students')
 export class Student {
@@ -46,4 +47,8 @@ export class Student {
 
   @Column({ name: 'joined_date' })
   joinedDate: Date;
+
+
+@OneToMany(() => StudentClass, (studentClass) => studentClass.student)
+studentClasses: StudentClass[];
 }

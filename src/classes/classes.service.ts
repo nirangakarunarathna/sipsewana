@@ -1,4 +1,10 @@
-import { HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateClassDto } from './dto/create-class.dto';
 import { UpdateClassDto } from './dto/update-class.dto';
 import { Class } from './entities/class.entity';
@@ -7,41 +13,35 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Teacher } from 'src/teachers/entities/teacher.entity';
 import { Grade } from 'src/grades/entities/grade.entity';
 import { Subject } from 'src/subjects/entities/subject.entity';
+import { Student } from 'src/students/entities/student.entity';
 
 @Injectable()
 export class ClassesService {
   constructor(
-    @InjectRepository(Class)
-    private classRepo: Repository<Class>,
-    @InjectRepository(Teacher)
-    private teacherRepo: Repository<Teacher>,
-    @InjectRepository(Grade)
-    private gradeRepo: Repository<Grade>,
-    @InjectRepository(Subject)
-    private subjectRepo: Repository<Subject>,
+    @InjectRepository(Class) private classRepo: Repository<Class>,
+    @InjectRepository(Teacher) private teacherRepo: Repository<Teacher>,
+    @InjectRepository(Subject) private subjectRepo: Repository<Subject>,
+    @InjectRepository(Grade) private gradeRepo: Repository<Grade>,
+
   ) {}
   async create(createClassDto: CreateClassDto) {
     const teacher = await this.teacherRepo.findOne({
       where: { id: createClassDto.teacherId },
     });
 
-    if (!teacher) {
-     throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
-  }
     const subject = await this.subjectRepo.findOne({
       where: { id: createClassDto.subjectId },
     });
-
-    if (!subject) {
-     throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
-  }
 
     const grade = await this.gradeRepo.findOne({
       where: { id: createClassDto.gradeId },
     });
 
     if (!teacher || !subject || !grade) {
-      throw new NotFoundException('Teacher, Subject, or Grade not found');
+      throw new HttpException(
+        'Teacher, Subject, or Grade not found',
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     const newClass = this.classRepo.create({
@@ -53,10 +53,13 @@ export class ClassesService {
     });
 
     return this.classRepo.save(newClass);
+    // } catch (error) {
+    //   throw new InternalServerErrorException(error, error.message);
+    // }
   }
 
-  findAll() {
-    return `This action returns all classes`;
+  async findAll() {
+    return await this.classRepo.find({});
   }
 
   findOne(id: number) {
