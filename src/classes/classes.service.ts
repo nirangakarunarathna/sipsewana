@@ -53,13 +53,17 @@ export class ClassesService {
     });
 
     return this.classRepo.save(newClass);
-    // } catch (error) {
-    //   throw new InternalServerErrorException(error, error.message);
-    // }
   }
 
   async findAll() {
-    return await this.classRepo.find({});
+    return await this.classRepo.find({
+    relations: {
+      grade: true,
+      subject: true,
+      teacher: true,
+    },
+    order: { id: 'DESC' },
+  });
   }
 
   findOne(id: number) {
