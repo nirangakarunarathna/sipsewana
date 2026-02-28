@@ -6,7 +6,7 @@ import { GradesModule } from './grades/grades.module';
 import { TeachersModule } from './teachers/teachers.module';
 import { ClassesModule } from './classes/classes.module';
 import { StudentClassesModule } from './student-classes/student-classes.module';
-import { StudentPaymentsModule } from './student-payments/student-payments.module';
+import { ClassSessionModule } from './class-session/class-session.module';
 
 @Module({
   imports: [
@@ -26,7 +26,7 @@ import { StudentPaymentsModule } from './student-payments/student-payments.modul
     TeachersModule,
     ClassesModule,
     StudentClassesModule,
-    StudentPaymentsModule,
+    ClassSessionModule,
   ],
 })
 export class AppModule {}
