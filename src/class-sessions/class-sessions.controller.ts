@@ -1,9 +1,18 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-import { ClassSessionService } from './class-session.service';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Query,
+} from '@nestjs/common';
+import { ClassSessionService } from './class-sessions.service';
 import { CreateClassSessionDto } from './dto/create-class-session.dto';
 import { UpdateClassSessionDto } from './dto/update-class-session.dto';
 
-@Controller('class-session')
+@Controller('class-sessions')
 export class ClassSessionController {
   constructor(private readonly classSessionService: ClassSessionService) {}
 
@@ -13,8 +22,11 @@ export class ClassSessionController {
   }
 
   @Get()
-  findAll() {
-    return this.classSessionService.findAll();
+  findAll(
+    @Query('classId') classId?: string,
+    @Query('yearMonth') yearMonth?: string,
+  ) {
+    return this.classSessionService.findAll(Number(classId), String(yearMonth));
   }
 
   @Get(':id')
@@ -23,7 +35,10 @@ export class ClassSessionController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateClassSessionDto: UpdateClassSessionDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateClassSessionDto: UpdateClassSessionDto,
+  ) {
     return this.classSessionService.update(+id, updateClassSessionDto);
   }
 

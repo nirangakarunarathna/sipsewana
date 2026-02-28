@@ -1,3 +1,4 @@
+import { ClassSession } from 'src/class-sessions/entities/class-sessions.entity';
 import { Grade } from 'src/grades/entities/grade.entity';
 import { StudentClass } from 'src/student-classes/entities/student-class.entity';
 import { Subject } from 'src/subjects/entities/subject.entity';
@@ -41,4 +42,7 @@ export class Class {
 
   @OneToMany(() => StudentClass, (studentClass) => studentClass.class)
   studentClasses: StudentClass[];
+
+  @OneToMany(() => ClassSession, (classSession) => classSession.class)
+  classSessions: ClassSession[];
 }

@@ -6,7 +6,8 @@ import { GradesModule } from './grades/grades.module';
 import { TeachersModule } from './teachers/teachers.module';
 import { ClassesModule } from './classes/classes.module';
 import { StudentClassesModule } from './student-classes/student-classes.module';
-import { ClassSessionModule } from './class-session/class-session.module';
+import { ClassSessionModule } from './class-sessions/class-sessions.module';
+import { StudentAttendancesModule } from './student-attendances/student-attendances.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { ClassSessionModule } from './class-session/class-session.module';
     ClassesModule,
     StudentClassesModule,
     ClassSessionModule,
+    StudentAttendancesModule,
   ],
 })
 export class AppModule {}

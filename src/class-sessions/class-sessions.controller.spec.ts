@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ClassSessionController } from './class-session.controller';
-import { ClassSessionService } from './class-session.service';
+import { ClassSessionController } from './class-sessions.controller';
+import { ClassSessionService } from './class-sessions.service';
 
 describe('ClassSessionController', () => {
   let controller: ClassSessionController;
