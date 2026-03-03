@@ -24,6 +24,9 @@ export class Class {
   @Column({ name: 'fee', type: 'decimal' })
   fee: number;
 
+  @Column({ name: 'institute_percentage', type: 'decimal', precision: 5, scale: 2, default: 25 })
+  institute_percentage: number;
+
   // -------------------
   // Foreign keys
   // -------------------

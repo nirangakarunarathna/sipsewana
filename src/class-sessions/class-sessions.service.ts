@@ -4,6 +4,7 @@ import {
   HttpException,
   HttpStatus,
   Injectable,
+  ParseIntPipe,
   Query,
 } from '@nestjs/common';
 import { CreateClassSessionDto } from './dto/create-class-session.dto';
@@ -41,28 +42,35 @@ export class ClassSessionService {
 
   @Get()
   async findAll(
-    @Query('classId') classId: number,
+    @Query('classId', ParseIntPipe) classId: number,
     @Query('yearMonth') yearMonth: string,
   ) {
-    if (!classId || !yearMonth) {
-      throw new BadRequestException('classId and yearMonth required');
+    if (!yearMonth || !/^\d{4}-\d{2}$/.test(yearMonth)) {
+      throw new BadRequestException('yearMonth must be YYYY-MM');
     }
 
-    const [year, month] = yearMonth.split('-');
+    const [yStr, mStr] = yearMonth.split('-');
+    const year = Number(yStr);
+    const month = Number(mStr);
 
-    const startDate = `${year}-${month}-01`;
-    const endDate = `${year}-${month}-31`;
+    // start = YYYY-MM-01
+    const start = new Date(year, month - 1, 1);
+    // end = first day of next month
+    const end = new Date(year, month, 1);
 
-    return this.sessionRepo
+    const startDate = start.toISOString().slice(0, 10);
+    const endDate = end.toISOString().slice(0, 10);
+
+    const sessions = await this.sessionRepo
       .createQueryBuilder('session')
       .where('session.class_id = :classId', { classId })
-      .andWhere('session.session_date BETWEEN :start AND :end', {
-        start: startDate,
-        end: endDate,
-      })
+      .andWhere('session.session_date >= :start', { start: startDate })
+      .andWhere('session.session_date < :end', { end: endDate })
       .orderBy('session.session_date', 'ASC')
       .addOrderBy('session.start_time', 'ASC')
       .getMany();
+
+    return sessions;
   }
 
   findOne(id: number) {

@@ -50,6 +50,7 @@ export class ClassesService {
       teacher,
       subject,
       grade,
+      institute_percentage: createClassDto.institutePercentage,
     });
 
     return this.classRepo.save(newClass);

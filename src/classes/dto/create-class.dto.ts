@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsNumber } from 'class-validator';
+import { IsNotEmpty, IsString, IsNumber, Min, Max } from 'class-validator';
 
 export class CreateClassDto {
   @IsNumber()
@@ -20,4 +20,9 @@ export class CreateClassDto {
   @IsNumber()
   @IsNotEmpty()
   fee: number;
+
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  institutePercentage: number;
 }
