@@ -29,7 +29,6 @@ export class StudentPaymentsController {
     @Query('yearMonth') yearMonth?: string,
     @Query('year') year?: string,
   ) {
-    console.log('SUMMARY HIT', { scope, yearMonth, year });
 
     if (scope !== 'month' && scope !== 'year') {
       throw new BadRequestException('scope must be month or year');

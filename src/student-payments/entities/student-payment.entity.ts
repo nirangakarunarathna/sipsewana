@@ -22,6 +22,9 @@ export class StudentPayment {
   @Column({ type: 'tinyint', default: 0 })
   is_paid: boolean;
 
+  @Column({ type: 'tinyint', default: 0 })
+  is_free: boolean;
+
   @Column({ type: 'datetime', nullable: true })
   paid_at: Date | null;
 

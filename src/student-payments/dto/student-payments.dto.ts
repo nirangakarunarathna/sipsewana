@@ -1,5 +1,5 @@
 // dto/student-payments.dto.ts
-import { IsArray, IsBoolean, IsInt, IsNotEmpty, IsNumber, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class PaymentRowDto {
@@ -8,6 +8,10 @@ export class PaymentRowDto {
 
   @IsBoolean()
   paid: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  isFree?: boolean;
 
   @IsNumber()
   amount: number;

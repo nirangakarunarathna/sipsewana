@@ -4,7 +4,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm';
 import { StudentPayment } from './entities/student-payment.entity';
 
-type PaymentRow = { studentId: number; paid: boolean; amount: number };
+// ✅ add isFree
+type PaymentRow = { studentId: number; paid: boolean; amount: number; isFree?: boolean };
 
 function chunkArray<T>(arr: T[], size: number) {
   const out: T[][] = [];
@@ -17,13 +18,14 @@ export class StudentPaymentsService {
   constructor(
     @InjectRepository(StudentPayment)
     private readonly repo: Repository<StudentPayment>,
-    private readonly dataSource: DataSource, // ✅ ADD THIS
+    private readonly dataSource: DataSource,
   ) {}
 
   async list(classId: number, yearMonth: string) {
     const rows = await this.repo.find({
       where: { class_id: classId, year_month: yearMonth },
-      select: ['student_id', 'is_paid', 'amount', 'paid_at'],
+      // ✅ include is_free
+      select: ['student_id', 'is_paid', 'amount', 'paid_at', 'is_free'],
     });
 
     return rows.map((r) => ({
@@ -31,6 +33,7 @@ export class StudentPaymentsService {
       paid: !!r.is_paid,
       amount: Number(r.amount ?? 0),
       paidAt: r.paid_at ?? null,
+      isFree: !!(r as any).is_free,
     }));
   }
 
@@ -39,8 +42,7 @@ export class StudentPaymentsService {
     if (!yearMonth || !/^\d{4}-\d{2}$/.test(yearMonth)) {
       throw new BadRequestException('yearMonth must be YYYY-MM');
     }
-    if (!payments?.length)
-      throw new BadRequestException('payments cannot be empty');
+    if (!payments?.length) throw new BadRequestException('payments cannot be empty');
 
     const studentIds = payments.map((p) => p.studentId);
 
@@ -50,17 +52,15 @@ export class StudentPaymentsService {
         year_month: yearMonth,
         student_id: In(studentIds),
       },
-      select: ['id', 'student_id', 'is_paid', 'paid_at'],
+      select: ['id', 'student_id', 'is_paid', 'paid_at', 'is_free'],
     });
 
-    const existingMap = new Map<
-      number,
-      { is_paid: boolean; paid_at: Date | null }
-    >();
+    const existingMap = new Map<number, { is_paid: boolean; paid_at: Date | null; is_free: boolean }>();
     for (const e of existing) {
       existingMap.set(e.student_id, {
         is_paid: !!e.is_paid,
         paid_at: e.paid_at ?? null,
+        is_free: !!(e as any).is_free,
       });
     }
 
@@ -68,7 +68,9 @@ export class StudentPaymentsService {
 
     const rows: Partial<StudentPayment>[] = payments.map((p) => {
       const prev = existingMap.get(p.studentId);
-      const nextPaid = !!p.paid;
+
+      const isFree = !!p.isFree;
+      const nextPaid = isFree ? false : !!p.paid;
 
       let paidAt: Date | null = null;
       if (nextPaid) {
@@ -81,8 +83,9 @@ export class StudentPaymentsService {
         class_id: classId,
         year_month: yearMonth,
         student_id: p.studentId,
+        is_free: isFree,
         is_paid: nextPaid,
-        amount: Number(p.amount ?? 0),
+        amount: isFree ? 0 : Number(p.amount ?? 0),
         paid_at: paidAt,
       };
     });
@@ -98,35 +101,34 @@ export class StudentPaymentsService {
   }
 
   // ==========================================================
-  // ✅ NEW: SUBJECT WISE SUMMARY (MONTH)
-  // GET /student-payments/summary?scope=month&yearMonth=2026-02
+  // ✅ SUBJECT WISE SUMMARY (MONTH/YEAR) WITH FREE COUNT
+  // Paid % denominator excludes free students:
+  // paidPct = paidCount / (totalStudents - freeCount)
   // ==========================================================
   private buildTotals(rows: any[]) {
-    const t = rows.reduce(
-      (acc, r) => {
-        acc.totalStudents += r.totalStudents;
-        acc.paidCount += r.paidCount;
-        acc.notPaidCount += r.notPaidCount;
-        acc.totalIncome += r.totalIncome;
-        acc.instituteIncome += r.instituteIncome;
-        return acc;
-      },
-      {
-        totalStudents: 0,
-        paidCount: 0,
-        notPaidCount: 0,
-        totalIncome: 0,
-        instituteIncome: 0,
-      },
-    );
+  const totalStudents = rows.reduce((s, r) => s + Number(r.totalStudents || 0), 0);
+  const paidCount = rows.reduce((s, r) => s + Number(r.paidCount || 0), 0);
+  const freeCount = rows.reduce((s, r) => s + Number(r.freeCount || 0), 0);
+  const totalIncome = rows.reduce((s, r) => s + Number(r.totalIncome || 0), 0);
+  const instituteIncome = rows.reduce((s, r) => s + Number(r.instituteIncome || 0), 0);
 
-    return {
-      ...t,
-      paidPct: t.totalStudents
-        ? Math.round((t.paidCount / t.totalStudents) * 100)
-        : 0,
-    };
-  }
+  // ✅ free not included in notPaid
+  const notPaidCount = Math.max(0, totalStudents - paidCount - freeCount);
+
+  // ✅ paid percentage denominator excludes free students
+  const denom = Math.max(0, totalStudents - freeCount);
+  const paidPct = denom ? Math.round((paidCount / denom) * 100) : 0;
+
+  return {
+    totalStudents,
+    paidCount,
+    freeCount,
+    notPaidCount,
+    totalIncome,
+    instituteIncome,
+    paidPct,
+  };
+}
 
   async subjectWiseSummaryMonth(yearMonth: string) {
     const rows = await this.subjectWiseCore({
@@ -156,36 +158,41 @@ export class StudentPaymentsService {
     };
   }
 
-  private async subjectWiseCore(args: {
-    joinFilterSql: string;
-    params: Record<string, any>;
-  }) {
+  private async subjectWiseCore(args: { joinFilterSql: string; params: Record<string, any> }) {
     const raw = await this.dataSource
       .createQueryBuilder()
       .select('s.id', 'subjectId')
-      .addSelect('s.name', 'subjectName') // change to s.subject_name if your DB uses that
+      .addSelect('s.name', 'subjectName')
 
       .addSelect('COUNT(DISTINCT sc.student_id)', 'totalStudents')
 
+      // ✅ count free students
       .addSelect(
-        'COUNT(DISTINCT CASE WHEN sp.is_paid = 1 THEN sc.student_id ELSE NULL END)',
+        'COUNT(DISTINCT CASE WHEN sp.is_free = 1 THEN sc.student_id ELSE NULL END)',
+        'freeCount',
+      )
+
+      // ✅ count paid students (ignore free)
+      .addSelect(
+        'COUNT(DISTINCT CASE WHEN sp.is_paid = 1 AND (sp.is_free IS NULL OR sp.is_free = 0) THEN sc.student_id ELSE NULL END)',
         'paidCount',
       )
 
+      // ✅ income (ignore free)
       .addSelect(
-        'COALESCE(SUM(CASE WHEN sp.is_paid = 1 THEN sp.amount ELSE 0 END), 0)',
+        'COALESCE(SUM(CASE WHEN sp.is_paid = 1 AND (sp.is_free IS NULL OR sp.is_free = 0) THEN sp.amount ELSE 0 END), 0)',
         'totalIncome',
       )
 
+      // ✅ institute income (ignore free)
       .addSelect(
-        'COALESCE(SUM(CASE WHEN sp.is_paid = 1 THEN (sp.amount * (c.institute_percentage / 100)) ELSE 0 END), 0)',
+        'COALESCE(SUM(CASE WHEN sp.is_paid = 1 AND (sp.is_free IS NULL OR sp.is_free = 0) THEN (sp.amount * (c.institute_percentage / 100)) ELSE 0 END), 0)',
         'instituteIncome',
       )
 
       .from('subjects', 's')
       .leftJoin('classes', 'c', 'c.subject_id = s.id')
       .leftJoin('student_classes', 'sc', 'sc.class_id = c.id')
-
       .leftJoin(
         'student_payments',
         'sp',
@@ -201,16 +208,23 @@ export class StudentPaymentsService {
     return raw.map((r) => {
       const totalStudents = Number(r.totalStudents || 0);
       const paidCount = Number(r.paidCount || 0);
+      const freeCount = Number(r.freeCount || 0);
+
+      // ✅ free should NOT be counted as notPaid
+      const notPaidCount = Math.max(0, totalStudents - paidCount - freeCount);
+
+      // ✅ paidPct denominator excludes free students (totalStudents stays same)
+      const denom = Math.max(0, totalStudents - freeCount);
+      const paidPct = denom ? Math.round((paidCount / denom) * 100) : 0;
 
       return {
         subjectId: Number(r.subjectId),
         subjectName: String(r.subjectName),
         totalStudents,
         paidCount,
-        notPaidCount: Math.max(0, totalStudents - paidCount),
-        paidPct: totalStudents
-          ? Math.round((paidCount / totalStudents) * 100)
-          : 0,
+        freeCount,
+        notPaidCount,
+        paidPct, // ✅ FIXED LOGIC
         totalIncome: Number(r.totalIncome || 0),
         instituteIncome: Number(r.instituteIncome || 0),
       };
