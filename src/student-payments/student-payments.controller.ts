@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, BadRequestException, Res } from '@nestjs/common';
+import express from 'express';   
 import { StudentPaymentsService } from './student-payments.service';
 // import { UpdateStudentPaymentDto } from './dto/update-student-payment.dto';
 import { BulkPaymentsDto } from './dto/student-payments.dto';
@@ -45,5 +46,59 @@ export class StudentPaymentsController {
       throw new BadRequestException('year must be YYYY');
     }
     return this.studentPaymentsService.subjectWiseSummaryYear(year);
+  }
+
+  @Get('teacher-bill/summary')
+  async teacherBillSummary(
+    @Query('teacherId') teacherId?: string,
+    @Query('yearMonth') yearMonth?: string,
+    @Query('subjectId') subjectId?: string,
+  ) {
+    const tId = Number(teacherId);
+    if (!tId) throw new BadRequestException('teacherId required');
+
+    if (!yearMonth || !/^\d{4}-\d{2}$/.test(yearMonth)) {
+      throw new BadRequestException('yearMonth must be YYYY-MM');
+    }
+
+    const sId = subjectId ? Number(subjectId) : null;
+    if (subjectId && !sId) throw new BadRequestException('subjectId invalid');
+
+    return this.studentPaymentsService.teacherBillSummaryMonth({
+      teacherId: tId,
+      yearMonth,
+      subjectId: sId,
+    });
+  }
+
+  @Post('teacher-bill/pdf')
+  async teacherBillPdf(@Body() body: any, @Res() res: express.Response) {
+    const teacherId = Number(body?.teacherId);
+    const yearMonth = String(body?.yearMonth || '');
+    const subjectId = body?.subjectId ? Number(body.subjectId) : null;
+
+    if (!teacherId) throw new BadRequestException('teacherId required');
+    if (!yearMonth || !/^\d{4}-\d{2}$/.test(yearMonth)) {
+      throw new BadRequestException('yearMonth must be YYYY-MM');
+    }
+    if (body?.subjectId && !subjectId) {
+      throw new BadRequestException('subjectId invalid');
+    }
+
+    const adjustments = Array.isArray(body?.adjustments) ? body.adjustments : [];
+
+    const pdfBuffer = await this.studentPaymentsService.teacherBillPdfMonth({
+      teacherId,
+      yearMonth,
+      subjectId,
+      adjustments,
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename="teacher-bill-${teacherId}-${yearMonth}.pdf"`,
+    );
+    res.send(pdfBuffer);
   }
 }

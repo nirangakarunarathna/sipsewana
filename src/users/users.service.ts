@@ -29,7 +29,7 @@ export class UsersService {
 
   private users: UserRow[] = [
     // password: admin123
-    { id: 1, username: 'admin', passwordHash: bcrypt.hashSync('admin123', 10), role: 'admin' },
+    { id: 1, username: 'admin', passwordHash: bcrypt.hashSync('1234', 10), role: 'admin' },
   ];
 
   async findByUsername(username: string) {
