@@ -62,7 +62,6 @@ async findAll() {
     .leftJoinAndSelect('c.grade', 'g')
     .leftJoinAndSelect('c.subject', 's')
     .leftJoinAndSelect('c.teacher', 't')
-    .orderBy('g.id', 'ASC')        // Grade 1, Grade 2, Grade 3...
     .addOrderBy('s.name', 'ASC')   // English, Maths...
     .addOrderBy('c.name', 'ASC')   // optional: stable within same grade+subject
     .getMany();
