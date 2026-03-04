@@ -23,18 +23,28 @@ export class StudentPaymentsController {
     return this.studentPaymentsService.bulkUpsert(dto.classId, dto.yearMonth, dto.payments);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    // return this.studentPaymentsService.findOne(+id);
+  @Get('summary')
+  async summary(
+    @Query('scope') scope: 'month' | 'year',
+    @Query('yearMonth') yearMonth?: string,
+    @Query('year') year?: string,
+  ) {
+    console.log('SUMMARY HIT', { scope, yearMonth, year });
+
+    if (scope !== 'month' && scope !== 'year') {
+      throw new BadRequestException('scope must be month or year');
+    }
+
+    if (scope === 'month') {
+      if (!yearMonth || !/^\d{4}-\d{2}$/.test(yearMonth)) {
+        throw new BadRequestException('yearMonth must be YYYY-MM');
+      }
+      return this.studentPaymentsService.subjectWiseSummaryMonth(yearMonth);
+    }
+
+    if (!year || !/^\d{4}$/.test(year)) {
+      throw new BadRequestException('year must be YYYY');
+    }
+    return this.studentPaymentsService.subjectWiseSummaryYear(year);
   }
-
-  // @Patch(':id')
-  // update(@Param('id') id: string, @Body() updateStudentPaymentDto: UpdateStudentPaymentDto) {
-  //   // return this.studentPaymentsService.update(+id, updateStudentPaymentDto);
-  // }
-
-  // @Delete(':id')
-  // remove(@Param('id') id: string) {
-  //   // return this.studentPaymentsService.remove(+id);
-  // }
 }
