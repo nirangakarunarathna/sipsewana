@@ -56,16 +56,17 @@ export class ClassesService {
     return this.classRepo.save(newClass);
   }
 
-  async findAll() {
-    return await this.classRepo.find({
-    relations: {
-      grade: true,
-      subject: true,
-      teacher: true,
-    },
-    order: { id: 'DESC' },
-  });
-  }
+async findAll() {
+  return this.classRepo
+    .createQueryBuilder('c')
+    .leftJoinAndSelect('c.grade', 'g')
+    .leftJoinAndSelect('c.subject', 's')
+    .leftJoinAndSelect('c.teacher', 't')
+    .orderBy('g.id', 'ASC')        // Grade 1, Grade 2, Grade 3...
+    .addOrderBy('s.name', 'ASC')   // English, Maths...
+    .addOrderBy('c.name', 'ASC')   // optional: stable within same grade+subject
+    .getMany();
+}
 
   findOne(id: number) {
     return `This action returns a #${id} class`;

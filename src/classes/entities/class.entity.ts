@@ -11,9 +11,11 @@ import {
   JoinColumn,
   ManyToMany,
   OneToMany,
+  Unique,
 } from 'typeorm';
 
 @Entity('classes')
+@Unique('UQ_classes_teacher_subject_grade', ['teacher', 'subject', 'grade'])
 export class Class {
   @PrimaryGeneratedColumn()
   id: number;
