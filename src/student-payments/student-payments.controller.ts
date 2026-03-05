@@ -70,35 +70,4 @@ export class StudentPaymentsController {
       subjectId: sId,
     });
   }
-
-  @Post('teacher-bill/pdf')
-  async teacherBillPdf(@Body() body: any, @Res() res: express.Response) {
-    const teacherId = Number(body?.teacherId);
-    const yearMonth = String(body?.yearMonth || '');
-    const subjectId = body?.subjectId ? Number(body.subjectId) : null;
-
-    if (!teacherId) throw new BadRequestException('teacherId required');
-    if (!yearMonth || !/^\d{4}-\d{2}$/.test(yearMonth)) {
-      throw new BadRequestException('yearMonth must be YYYY-MM');
-    }
-    if (body?.subjectId && !subjectId) {
-      throw new BadRequestException('subjectId invalid');
-    }
-
-    const adjustments = Array.isArray(body?.adjustments) ? body.adjustments : [];
-
-    const pdfBuffer = await this.studentPaymentsService.teacherBillPdfMonth({
-      teacherId,
-      yearMonth,
-      subjectId,
-      adjustments,
-    });
-
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader(
-      'Content-Disposition',
-      `inline; filename="teacher-bill-${teacherId}-${yearMonth}.pdf"`,
-    );
-    res.send(pdfBuffer);
-  }
 }
