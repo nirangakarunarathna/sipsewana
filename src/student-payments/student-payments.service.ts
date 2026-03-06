@@ -1,12 +1,17 @@
-// student-payments.service.ts
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm';
 import PDFDocument from 'pdfkit';
 import { StudentPayment } from './entities/student-payment.entity';
 
-// ✅ add isFree
-type PaymentRow = { studentId: number; paid: boolean; amount: number; isFree?: boolean };
+type PaymentRow = {
+  studentId: number;
+  paid: boolean;
+  amount: number;
+  isFree?: boolean;
+  feeRemaining?: boolean;
+  paidAt?: string | null;
+};
 
 function chunkArray<T>(arr: T[], size: number) {
   const out: T[][] = [];
@@ -25,16 +30,16 @@ export class StudentPaymentsService {
   async list(classId: number, yearMonth: string) {
     const rows = await this.repo.find({
       where: { class_id: classId, year_month: yearMonth },
-      // ✅ include is_free
-      select: ['student_id', 'is_paid', 'amount', 'paid_at', 'is_free'],
+      select: ['student_id', 'is_paid', 'amount', 'paid_at', 'is_free', 'fee_remaining'],
     });
 
     return rows.map((r) => ({
       studentId: r.student_id,
       paid: !!r.is_paid,
       amount: Number(r.amount ?? 0),
-      paidAt: r.paid_at ?? null,
+      paidAt: r.paid_at ? new Date(r.paid_at).toISOString().slice(0, 10) : null,
       isFree: !!(r as any).is_free,
+      feeRemaining: !!(r as any).fee_remaining,
     }));
   }
 
@@ -53,15 +58,25 @@ export class StudentPaymentsService {
         year_month: yearMonth,
         student_id: In(studentIds),
       },
-      select: ['id', 'student_id', 'is_paid', 'paid_at', 'is_free'],
+      select: ['id', 'student_id', 'is_paid', 'paid_at', 'is_free', 'fee_remaining'],
     });
 
-    const existingMap = new Map<number, { is_paid: boolean; paid_at: Date | null; is_free: boolean }>();
+    const existingMap = new Map<
+      number,
+      {
+        is_paid: boolean;
+        paid_at: Date | null;
+        is_free: boolean;
+        fee_remaining: boolean;
+      }
+    >();
+
     for (const e of existing) {
       existingMap.set(e.student_id, {
         is_paid: !!e.is_paid,
         paid_at: e.paid_at ?? null,
         is_free: !!(e as any).is_free,
+        fee_remaining: !!(e as any).fee_remaining,
       });
     }
 
@@ -72,10 +87,16 @@ export class StudentPaymentsService {
 
       const isFree = !!p.isFree;
       const nextPaid = isFree ? false : !!p.paid;
+      const feeRemaining = isFree ? false : !!p.feeRemaining;
 
       let paidAt: Date | null = null;
+
       if (nextPaid) {
-        paidAt = prev?.is_paid ? (prev.paid_at ?? now) : now;
+        if (p.paidAt) {
+          paidAt = new Date(p.paidAt);
+        } else {
+          paidAt = prev?.is_paid ? (prev.paid_at ?? now) : now;
+        }
       } else {
         paidAt = null;
       }
@@ -87,6 +108,7 @@ export class StudentPaymentsService {
         is_free: isFree,
         is_paid: nextPaid,
         amount: isFree ? 0 : Number(p.amount ?? 0),
+        fee_remaining: feeRemaining,
         paid_at: paidAt,
       };
     });
@@ -101,35 +123,27 @@ export class StudentPaymentsService {
     return { ok: true, upserted: rows.length };
   }
 
-  // ==========================================================
-  // ✅ SUBJECT WISE SUMMARY (MONTH/YEAR) WITH FREE COUNT
-  // Paid % denominator excludes free students:
-  // paidPct = paidCount / (totalStudents - freeCount)
-  // ==========================================================
   private buildTotals(rows: any[]) {
-  const totalStudents = rows.reduce((s, r) => s + Number(r.totalStudents || 0), 0);
-  const paidCount = rows.reduce((s, r) => s + Number(r.paidCount || 0), 0);
-  const freeCount = rows.reduce((s, r) => s + Number(r.freeCount || 0), 0);
-  const totalIncome = rows.reduce((s, r) => s + Number(r.totalIncome || 0), 0);
-  const instituteIncome = rows.reduce((s, r) => s + Number(r.instituteIncome || 0), 0);
+    const totalStudents = rows.reduce((s, r) => s + Number(r.totalStudents || 0), 0);
+    const paidCount = rows.reduce((s, r) => s + Number(r.paidCount || 0), 0);
+    const freeCount = rows.reduce((s, r) => s + Number(r.freeCount || 0), 0);
+    const totalIncome = rows.reduce((s, r) => s + Number(r.totalIncome || 0), 0);
+    const instituteIncome = rows.reduce((s, r) => s + Number(r.instituteIncome || 0), 0);
 
-  // ✅ free not included in notPaid
-  const notPaidCount = Math.max(0, totalStudents - paidCount - freeCount);
+    const notPaidCount = Math.max(0, totalStudents - paidCount - freeCount);
+    const denom = Math.max(0, totalStudents - freeCount);
+    const paidPct = denom ? Math.round((paidCount / denom) * 100) : 0;
 
-  // ✅ paid percentage denominator excludes free students
-  const denom = Math.max(0, totalStudents - freeCount);
-  const paidPct = denom ? Math.round((paidCount / denom) * 100) : 0;
-
-  return {
-    totalStudents,
-    paidCount,
-    freeCount,
-    notPaidCount,
-    totalIncome,
-    instituteIncome,
-    paidPct,
-  };
-}
+    return {
+      totalStudents,
+      paidCount,
+      freeCount,
+      notPaidCount,
+      totalIncome,
+      instituteIncome,
+      paidPct,
+    };
+  }
 
   async subjectWiseSummaryMonth(yearMonth: string) {
     const rows = await this.subjectWiseCore({
@@ -164,33 +178,23 @@ export class StudentPaymentsService {
       .createQueryBuilder()
       .select('s.id', 'subjectId')
       .addSelect('s.name', 'subjectName')
-
       .addSelect('COUNT(DISTINCT sc.student_id)', 'totalStudents')
-
-      // ✅ count free students
       .addSelect(
         'COUNT(DISTINCT CASE WHEN sp.is_free = 1 THEN sc.student_id ELSE NULL END)',
         'freeCount',
       )
-
-      // ✅ count paid students (ignore free)
       .addSelect(
         'COUNT(DISTINCT CASE WHEN sp.is_paid = 1 AND (sp.is_free IS NULL OR sp.is_free = 0) THEN sc.student_id ELSE NULL END)',
         'paidCount',
       )
-
-      // ✅ income (ignore free)
       .addSelect(
         'COALESCE(SUM(CASE WHEN sp.is_paid = 1 AND (sp.is_free IS NULL OR sp.is_free = 0) THEN sp.amount ELSE 0 END), 0)',
         'totalIncome',
       )
-
-      // ✅ institute income (ignore free)
       .addSelect(
         'COALESCE(SUM(CASE WHEN sp.is_paid = 1 AND (sp.is_free IS NULL OR sp.is_free = 0) THEN (sp.amount * (c.institute_percentage / 100)) ELSE 0 END), 0)',
         'instituteIncome',
       )
-
       .from('subjects', 's')
       .leftJoin('classes', 'c', 'c.subject_id = s.id')
       .leftJoin('student_classes', 'sc', 'sc.class_id = c.id')
@@ -200,7 +204,6 @@ export class StudentPaymentsService {
         `sp.class_id = c.id AND sp.student_id = sc.student_id AND ${args.joinFilterSql}`,
         args.params,
       )
-
       .groupBy('s.id')
       .addGroupBy('s.name')
       .orderBy('totalStudents', 'DESC')
@@ -211,10 +214,7 @@ export class StudentPaymentsService {
       const paidCount = Number(r.paidCount || 0);
       const freeCount = Number(r.freeCount || 0);
 
-      // ✅ free should NOT be counted as notPaid
       const notPaidCount = Math.max(0, totalStudents - paidCount - freeCount);
-
-      // ✅ paidPct denominator excludes free students (totalStudents stays same)
       const denom = Math.max(0, totalStudents - freeCount);
       const paidPct = denom ? Math.round((paidCount / denom) * 100) : 0;
 
@@ -225,16 +225,13 @@ export class StudentPaymentsService {
         paidCount,
         freeCount,
         notPaidCount,
-        paidPct, // ✅ FIXED LOGIC
+        paidPct,
         totalIncome: Number(r.totalIncome || 0),
         instituteIncome: Number(r.instituteIncome || 0),
       };
     });
   }
 
-   // ============================
-  // TEACHER BILL - MONTH SUMMARY
-  // ============================
   async teacherBillSummaryMonth(args: {
     teacherId: number;
     yearMonth: string;
@@ -263,9 +260,6 @@ export class StudentPaymentsService {
     };
   }
 
-  // ============================
-  // CORE QUERY (MONTH)
-  // ============================
   private async teacherBillCoreMonth(args: {
     teacherId: number;
     yearMonth: string;
@@ -273,41 +267,28 @@ export class StudentPaymentsService {
   }) {
     const { teacherId, yearMonth, subjectId } = args;
 
-    // IMPORTANT:
-    // paidCount = paid AND amount > 0
-    // freeCount = paid AND amount = 0
-    // totalIncome = sum(amount where paid=1)
-    // instituteIncome = sum(amount * institute_percentage/100 where paid=1)
-    // teacherIncome = totalIncome - instituteIncome
-    //
-    // Not paid = totalStudents - (paidCount + freeCount)
-
     const qb = this.dataSource
       .createQueryBuilder()
       .select('c.id', 'classId')
       .addSelect('c.name', 'className')
       .addSelect('COALESCE(c.institute_percentage, 0)', 'institutePercentage')
-
       .addSelect('COUNT(DISTINCT sc.student_id)', 'totalStudents')
-
       .addSelect(
-        'COUNT(DISTINCT CASE WHEN sp.is_paid = 1 AND sp.amount > 0 THEN sc.student_id ELSE NULL END)',
+        'COUNT(DISTINCT CASE WHEN sp.is_paid = 1 AND (sp.is_free IS NULL OR sp.is_free = 0) THEN sc.student_id ELSE NULL END)',
         'paidCount',
       )
       .addSelect(
-        'COUNT(DISTINCT CASE WHEN sp.is_paid = 1 AND sp.amount = 0 THEN sc.student_id ELSE NULL END)',
+        'COUNT(DISTINCT CASE WHEN sp.is_free = 1 THEN sc.student_id ELSE NULL END)',
         'freeCount',
       )
-
       .addSelect(
-        'COALESCE(SUM(CASE WHEN sp.is_paid = 1 THEN sp.amount ELSE 0 END), 0)',
+        'COALESCE(SUM(CASE WHEN sp.is_paid = 1 AND (sp.is_free IS NULL OR sp.is_free = 0) THEN sp.amount ELSE 0 END), 0)',
         'totalIncome',
       )
       .addSelect(
-        'COALESCE(SUM(CASE WHEN sp.is_paid = 1 THEN (sp.amount * (COALESCE(c.institute_percentage,0) / 100)) ELSE 0 END), 0)',
+        'COALESCE(SUM(CASE WHEN sp.is_paid = 1 AND (sp.is_free IS NULL OR sp.is_free = 0) THEN (sp.amount * (COALESCE(c.institute_percentage,0) / 100)) ELSE 0 END), 0)',
         'instituteIncome',
       )
-
       .from('classes', 'c')
       .leftJoin('student_classes', 'sc', 'sc.class_id = c.id')
       .leftJoin(
@@ -342,12 +323,10 @@ export class StudentPaymentsService {
         classId: Number(r.classId),
         className: String(r.className),
         institutePercentage: Number(r.institutePercentage || 0),
-
         totalStudents,
         paidCount,
         freeCount,
         notPaidCount: Math.max(0, totalStudents - (paidCount + freeCount)),
-
         totalIncome,
         instituteIncome,
         teacherIncome,
@@ -355,9 +334,6 @@ export class StudentPaymentsService {
     });
   }
 
-  // ============================
-  // TOTALS BUILDER
-  // ============================
   private buildTeacherBillTotals(rows: any[]) {
     const t = rows.reduce(
       (acc, r) => {
@@ -387,9 +363,6 @@ export class StudentPaymentsService {
     };
   }
 
-  // ============================
-  // BASIC LOOKUPS
-  // ============================
   private async getTeacherBasic(teacherId: number) {
     const row = await this.dataSource
       .createQueryBuilder()

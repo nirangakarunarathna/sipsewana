@@ -13,6 +13,14 @@ export class PaymentRowDto {
   @IsBoolean()
   isFree?: boolean;
 
+    @IsOptional()
+  @IsBoolean()
+  feeRemaining?: boolean;
+
+    @IsOptional()
+  @IsString()
+  paidAt?: string | null;
+
   @IsNumber()
   amount: number;
 }
