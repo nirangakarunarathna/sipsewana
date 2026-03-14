@@ -42,6 +42,15 @@ export class CreateStudentDto {
   @Transform(
     ({ value }) => (typeof value === 'string' ? value.trim() : value) as string,
   )
+  studentWhatsApp?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(15)
+  @Transform(
+    ({ value }) => (typeof value === 'string' ? value.trim() : value) as string,
+  )
   parentMobile?: string;
 
   @IsOptional()

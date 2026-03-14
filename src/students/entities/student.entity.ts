@@ -28,6 +28,15 @@ export class Student {
   studentMobile: string;
 
   @Column({
+    name: 'student_whatsapp',
+    type: 'varchar',
+    length: 15,
+    nullable: true,
+    default: null,
+  })
+  studentWhatsApp: string;
+
+  @Column({
     name: 'parent_mobile',
     type: 'varchar',
     length: 15,

@@ -19,6 +19,7 @@ export class StudentsService {
       parentName: createStudentDto.parentName,
       address: createStudentDto.address,
       studentMobile: createStudentDto.studentMobile,
+      studentWhatsApp: createStudentDto.studentWhatsApp,
       joinedDate: new Date(),
     });
 
