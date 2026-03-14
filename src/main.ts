@@ -16,14 +16,7 @@ async function bootstrap() {
   );
 
   // ✅ Enable CORS for frontend
-  app.enableCors({
-    origin: [
-      'http://localhost:5173',
-      'http://localhost:3001',
-      'http://localhost:3000',
-    ],
-    credentials: true,
-  });
+  app.enableCors();
 
   // ✅ Protect ALL APIs with JWT
   const reflector = app.get(Reflector);
