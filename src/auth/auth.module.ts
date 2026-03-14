@@ -9,7 +9,7 @@ import { UsersService } from '../users/users.service';
   imports: [
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'DEV_SECRET_CHANGE_ME',
-      signOptions: { expiresIn: '30m' }, // adjust
+      signOptions: { expiresIn: '6h' }, // adjust
     }),
   ],
   controllers: [AuthController],
