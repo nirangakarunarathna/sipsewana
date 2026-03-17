@@ -62,8 +62,9 @@ async findAll() {
     .leftJoinAndSelect("c.grade", "g")
     .leftJoinAndSelect("c.subject", "s")
     .leftJoinAndSelect("c.teacher", "t")
+    .addSelect("CAST(g.name AS UNSIGNED)", "grade_order")
     .orderBy("s.name", "ASC")
-    .addOrderBy("g.id", "ASC")
+    .addOrderBy("grade_order", "ASC")
     .getMany();
 }
 
