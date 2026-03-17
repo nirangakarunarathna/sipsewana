@@ -58,12 +58,12 @@ export class ClassesService {
 
 async findAll() {
   return this.classRepo
-    .createQueryBuilder('c')
-    .leftJoinAndSelect('c.grade', 'g')
-    .leftJoinAndSelect('c.subject', 's')
-    .leftJoinAndSelect('c.teacher', 't')
-    .addOrderBy('s.name', 'ASC')   // English, Maths...
-    .addOrderBy('c.name', 'ASC')   // optional: stable within same grade+subject
+    .createQueryBuilder("c")
+    .leftJoinAndSelect("c.grade", "g")
+    .leftJoinAndSelect("c.subject", "s")
+    .leftJoinAndSelect("c.teacher", "t")
+    .orderBy("s.name", "ASC")
+    .addOrderBy("CAST(REGEXP_SUBSTR(g.name, '[0-9]+') AS UNSIGNED)", "ASC")
     .getMany();
 }
 
