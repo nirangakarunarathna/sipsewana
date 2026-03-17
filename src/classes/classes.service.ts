@@ -63,8 +63,10 @@ async findAll() {
     .leftJoinAndSelect("c.subject", "s")
     .leftJoinAndSelect("c.teacher", "t")
     .orderBy("s.name", "ASC")
-    .addOrderBy("CAST(REGEXP_SUBSTR(g.name, '[0-9]+') AS UNSIGNED)", "ASC")
-    .addOrderBy("c.name", "ASC")
+    .addOrderBy(
+      "CAST(SUBSTRING_INDEX(g.name, ' ', -1) AS UNSIGNED)",
+      "ASC"
+    )
     .getMany();
 }
 
